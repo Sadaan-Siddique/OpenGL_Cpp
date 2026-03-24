@@ -21,20 +21,31 @@ const char* g_vertexShaderSource = R"(
     #version 330 core
     layout (location = 0) in vec3 aPos; // position has attribute position 0
 
-    uniform float xOffset; // specify a color output to the fragment shader
+    out vec3 ourPos; // specify a color output to the fragment shader
 
     void main()
     {
-        gl_Position = vec4(aPos.x + xOffset, aPos.y, aPos.z, 1.0);
+        gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+        ourPos = aPos; // pass position
     }
 )";
 
 const char* g_fragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "uniform vec4 ourColor;\n"
+    "out vec4 FragColor;\n" // The fragment shader only requires one output variable and that is a vector of size 4 that defines the final color output that we should calculate ourselves.
+
+    "in vec3 ourPos;\n" // input variable from vs (same name and type)
+    // colors must be in range [0.0 → 1.0]. 
+    // Bottom left vertex has coordinates: (-0.5, -0.5, 0.0) 
+    // Now in fragment shader: FragColor = vec4(ourPos, 1.0);
+    // That becomes: (-0.5, -0.5, 0.0, 1.0)
+    // Since, colors should be in range [0.0 - 1.0], negative values are clamped to zero. 
+    // So, (-0.5, -0.5, 0.0) → (0.0, 0.0, 0.0)
+    // That is: BLACK 
+    "uniform float ourColor;\n"
+
     "void main()\n"
     "{\n"
-        "FragColor = ourColor;\n"
+        "FragColor = vec4(ourPos * 0.5 + ourColor, 1.0);\n"
     "}\0";
 
 // Functions
@@ -100,11 +111,17 @@ void windowInitialize()
 
 void vertexSpecification()
 {
-        float vertices[] = {
-        // positions        
-        0.5f, -0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-        0.0f,  0.5f, 0.0f
+    const float vertices[] = {
+        // x    y     z
+        -0.5f, -0.5f, 0.0f, // vertex 0
+        -0.5f, 0.5f, 0.0f, // vertex 1
+        0.5f, 0.5f, 0.0f, // vertex 2
+        0.5f, -0.5f, 0.0f // vertex 3
+    };
+
+    unsigned int indices[] = {
+        0, 1, 2,
+        0, 2, 3
     };
 
     glGenVertexArrays(1, &g_VAO);
@@ -114,11 +131,13 @@ void vertexSpecification()
     glBindBuffer(GL_ARRAY_BUFFER, g_VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
+    glGenBuffers(1, &g_EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
     // position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    
-    glBindVertexArray(0);
     
 }
 
@@ -211,20 +230,19 @@ void mainRenderingLoop()
 
         glUseProgram(g_shaderProgram); // to actviate the shader
 
-        float time = glfwGetTime();
-        
-        float offset = sin(time) * 0.5f; 
-        int offsetLocation = glGetUniformLocation(g_shaderProgram, "xOffset");
-        glUniform1f(offsetLocation, offset);
-
-        float greenValue = my_sin(time) / 2.0f + 0.5f;
-        int colorLocation = glGetUniformLocation(g_shaderProgram, "ourColor");
-        glUniform4f(colorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+        // update the uniform shader
+        // update the uniform color
+        float timeValue = glfwGetTime();
+        float greenValue = my_sin(timeValue) / 2.0f + 0.5f;
+        int vertexColorLocation = glGetUniformLocation(g_shaderProgram, "ourColor");
+        glUniform1f(vertexColorLocation, greenValue);
 
         // Draw
         glBindVertexArray(g_VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        
+        // glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_EBO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
         glfwSwapBuffers(g_window);
         glfwPollEvents();
     }
