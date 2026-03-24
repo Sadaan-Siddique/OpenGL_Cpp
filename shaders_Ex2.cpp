@@ -20,32 +20,22 @@ unsigned int g_shaderProgram;
 const char* g_vertexShaderSource = R"( 
     #version 330 core
     layout (location = 0) in vec3 aPos; // position has attribute position 0
-    // layout (location = 1) in vec3 aColor; // color has attribute position 1
 
-    // out vec3 vertexColor; // specify a color output to the fragment shader
-    // uniform vec3 vertexColor; // specify a color output to the fragment shader
+    uniform float xOffset; // specify a color output to the fragment shader
 
     void main()
     {
-        gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-        //  vertexColor = vec4(0.5, 0.0, 0.0, 1.0); // output variable to dark-red
-        // vertexColor = aColor;
+        gl_Position = vec4(aPos.x + xOffset, aPos.y, aPos.z, 1.0);
     }
 )";
-// We have managed to send a value from the vertex shader to the fragment shader by using out as keyword in vertex shaderx`
+
 const char* g_fragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n" // The fragment shader only requires one output variable and that is a vector of size 4 that defines the final color output that we should calculate ourselves.
-    // "in vec4 vertexColor;\n" // input variable from vs (same name and type)
-    // "in vec3 vertexColor;\n"
+    "out vec4 FragColor;\n"
     "uniform vec4 ourColor;\n"
     "void main()\n"
     "{\n"
-        // These colors are colors that are used in rasterization
-        // "FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n" // last value in parameter is to define how opaque our rendering object should be
         "FragColor = ourColor;\n"
-        // "FragColor = vec4(vertexColor, 1.0);\n"
     "}\0";
-// We declared a uniform vec4 ourColor in the fragment shader and set the fragment’s output color to the content of this uniform value. Since uniforms are global variables, we can define them in any shader stage we’d like so no need to go through the vertex shader again to get something to the fragment shader. We’re not using this uniform in the vertex shader so there’s no need to define it there.
 
 // Functions
 void windowInitialize();
@@ -110,25 +100,11 @@ void windowInitialize()
 
 void vertexSpecification()
 {
-    // const float vertices[] = {
-    //     // x    y     z
-    //     -0.5f, -0.5f, 0.0f, // vertex 0
-    //     -0.5f, 0.5f, 0.0f, // vertex 1
-    //     0.5f, 0.5f, 0.0f, // vertex 2
-    //     0.5f, -0.5f, 0.0f // vertex 3
-    // };
-
-    float vertices[] = {
-        // positions        // colors
-        0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // 0 → bottom right
-        -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // 1 → bottom left
-        -0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, // 2 → top left
-        0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 1.0f  // 3 → top right
-    };
-
-    unsigned int indices[] = {
-        0, 1, 2,
-        0, 2, 3
+        float vertices[] = {
+        // positions        
+        0.5f, -0.5f, 0.0f,
+        -0.5f, -0.5f, 0.0f,
+        0.0f,  0.5f, 0.0f
     };
 
     glGenVertexArrays(1, &g_VAO);
@@ -138,18 +114,11 @@ void vertexSpecification()
     glBindBuffer(GL_ARRAY_BUFFER, g_VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glGenBuffers(1, &g_EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_EBO);
-    // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
     // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    // color attribute
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),(void*)(3* sizeof(float)));
-    glEnableVertexAttribArray(1);    glBindVertexArray(0);
+    
+    glBindVertexArray(0);
     
 }
 
@@ -178,7 +147,6 @@ void checkCompilation(const unsigned int shader)
 
 }
 
-// void createShaderProgram(const std::string &vertexShaderSource, const std::string &fragmentShaderSource)
 void createShaderProgram()
 {
 
@@ -243,19 +211,21 @@ void mainRenderingLoop()
 
         glUseProgram(g_shaderProgram); // to actviate the shader
 
-        // update the uniform shader
-        // update the uniform color
-        float timeValue = glfwGetTime();
-        // float greenValue = sin(timeValue) / 2.0f + 0.5f;
-        float greenValue = my_sin(timeValue) / 2.0f + 0.5f;
-        int vertexColorLocation = glGetUniformLocation(g_shaderProgram, "ourColor");
-        glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+        float time = glfwGetTime();
+        
+        float offset = sin(time) * 0.5f; 
+        int offsetLocation = glGetUniformLocation(g_shaderProgram, "xOffset");
+        glUniform1f(offsetLocation, offset);
+
+        float greenValue = my_sin(time) / 2.0f + 0.5f;
+        int colorLocation = glGetUniformLocation(g_shaderProgram, "ourColor");
+        glUniform4f(colorLocation, 0.0f, greenValue, 0.0f, 1.0f);
 
         // Draw
         glBindVertexArray(g_VAO);
-        // glDrawArrays(GL_TRIANGLES, 0, 3);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_EBO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_EBO);
+        // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         glfwSwapBuffers(g_window);
         glfwPollEvents();
