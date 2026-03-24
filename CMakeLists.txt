@@ -16,7 +16,7 @@ find_package(OpenGL REQUIRED)
 # Tell CMake the name of our executable and the source file it comes from
 add_executable(helloWindow helloWindow.cpp glad.c)
 # Tell CMake to look in your current folder for the GLAD includes
-target_include_directories(practhelloWindowice PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(helloWindow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(helloWindow glfw ${OPENGL_LIBRARIES})
 # Link GLFW, GLEW, and OpenGL directly to your executable
 # target_link_libraries(helloWindow glfw GLEW ${OPENGL_LIBRARIES})

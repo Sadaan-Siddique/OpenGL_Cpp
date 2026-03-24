@@ -1,9 +1,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <cmath> // Needed for fmod (range reduction)
 using std::cout, std::endl;
 
 // Global Variables
+#define PI 3.141592653589793238462649
 const unsigned int g_SCR_WIDTH = 800; 
 const unsigned int g_SCR_HEIGHT = 800; 
 GLFWwindow* g_window;
@@ -28,14 +30,16 @@ const char* g_vertexShaderSource = R"(
 // We have managed to send a value from the vertex shader to the fragment shader by using out in keywords
 const char* g_fragmentShaderSource = "#version 330 core\n"
     "out vec4 FragColor;\n" // The fragment shader only requires one output variable and that is a vector of size 4 that defines the final color output that we should calculate ourselves.
-    "in vec4 vertexColor;\n" // input variable from vs (same name and type)
+    // "in vec4 vertexColor;\n" // input variable from vs (same name and type)
+    "uniform vec4 ourColor;\n"
     "void main()\n"
     "{\n"
         // These colors are colors that are used in rasterization
         // "FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n" // last value in parameter is to define how opaque our rendering object should be
-        "FragColor = vertexColor;\n"
+        // "FragColor = vertexColor;\n"
+        "FragColor = ourColor;\n"
     "}\0";
-
+// We declared a uniform vec4 ourColor in the fragment shader and set the fragment’s output color to the content of this uniform value. Since uniforms are global variables, we can define them in any shader stage we’d like so no need to go through the vertex shader again to get something to the fragment shader. We’re not using this uniform in the vertex shader so there’s no need to define it there.
 
 // Functions
 void windowInitialize();
@@ -45,6 +49,7 @@ void mainRenderingLoop();
 void GetOpenGLVersionInfo();
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
+long double my_sin(double x);
 
 // Main Start
 int main()
@@ -61,6 +66,7 @@ int main()
 
     return 0;
 }
+
 // Main End
 
 void windowInitialize()
@@ -216,7 +222,14 @@ void mainRenderingLoop()
         glClearColor(1.f, 1.f, 0.f, 1.f);
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT); // Without this, Framebuffer may behave weirdly.
 
-        glUseProgram(g_shaderProgram);
+        glUseProgram(g_shaderProgram); // to actviate the shader
+
+        // update the uniform shader
+        // update the uniform color
+        float timeValue = glfwGetTime();
+        float greenValue = sin(timeValue) / 2.0f + 0.5f;
+        int vertexColorLocation = glGetUniformLocation(g_shaderProgram, "ourColor");
+        glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
 
         // Draw
         glBindVertexArray(g_VAO);
@@ -234,4 +247,29 @@ void mainRenderingLoop()
     glDeleteBuffers(1, &g_VBO);
     glDeleteProgram(g_shaderProgram);
 
+}
+
+long double my_sin(double x)
+{
+    // 1. Range Reduction:
+    // Taylor series gets highly inaccurate for huge numbers.
+    // This safely loops any massive angle back down into the standard -2PI to 2PI range.
+    x = fmod(x, 2.0 * PI);
+
+    // 2. The Running Term Trick
+    long double term = x;  // The very first term (n=0) is always just x
+    long double sinx = term;
+
+    // Start at n=1, since we already added the n=0 term above
+    for (int n = 1; n < 19; n++) 
+    {
+        // Multiply the previous term by (-x^2) / (2n * (2n+1))
+        // This avoids calculating massive factorials!
+        term *= -(x * x) / ((2.0 * n) * (2.0 * n + 1.0));
+        
+        // Add it to the total
+        sinx += term;
+    }
+    
+    return sinx;
 }
