@@ -4,6 +4,7 @@ build/
 *.pdf
 # Ignore every single Markdown file
 *.md
+*.exe
 
 practice.cpp
 practice2.cpp

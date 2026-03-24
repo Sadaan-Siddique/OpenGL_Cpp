@@ -27,7 +27,7 @@ const char* g_vertexShaderSource = R"(
         vertexColor = vec4(0.5, 0.0, 0.0, 1.0); // output variable to dark-red
     }
 )";
-// We have managed to send a value from the vertex shader to the fragment shader by using out in keywords
+// We have managed to send a value from the vertex shader to the fragment shader by using out as keyword in vertex shader
 const char* g_fragmentShaderSource = "#version 330 core\n"
     "out vec4 FragColor;\n" // The fragment shader only requires one output variable and that is a vector of size 4 that defines the final color output that we should calculate ourselves.
     // "in vec4 vertexColor;\n" // input variable from vs (same name and type)
@@ -49,6 +49,8 @@ void mainRenderingLoop();
 void GetOpenGLVersionInfo();
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
+long double exponentialFunc(double base, unsigned int exponent);
+unsigned long long factorialFunc(unsigned int n);
 long double my_sin(double x);
 
 // Main Start
@@ -249,27 +251,32 @@ void mainRenderingLoop()
 
 }
 
+long double exponentialFunc(double base, unsigned int exponent)
+{
+    if (base == 0 && exponent == 0)
+        return -1;
+
+    long double power = 1;
+    for(int i = 1; i <= exponent; i++)
+        power *= base;
+    return power;
+}
+
+unsigned long long factorialFunc(unsigned int n)
+{
+    unsigned long long factorial = 1;
+    for(int i = n; i > 0; i--)
+        factorial *=  i;
+    return factorial;
+}
+
 long double my_sin(double x)
 {
-    // 1. Range Reduction:
-    // Taylor series gets highly inaccurate for huge numbers.
-    // This safely loops any massive angle back down into the standard -2PI to 2PI range.
     x = fmod(x, 2.0 * PI);
-
-    // 2. The Running Term Trick
-    long double term = x;  // The very first term (n=0) is always just x
-    long double sinx = term;
-
-    // Start at n=1, since we already added the n=0 term above
-    for (int n = 1; n < 19; n++) 
-    {
-        // Multiply the previous term by (-x^2) / (2n * (2n+1))
-        // This avoids calculating massive factorials!
-        term *= -(x * x) / ((2.0 * n) * (2.0 * n + 1.0));
-        
-        // Add it to the total
-        sinx += term;
-    }
+    long double sinx = 0;
+    // Summation Function of taylor series of sinx
+    for (int n = 0; n < 9; n++)
+      sinx += ( exponentialFunc(-1, n) * exponentialFunc(x, ((2*n) + 1)) ) / factorialFunc((2*n) + 1);
     
     return sinx;
 }

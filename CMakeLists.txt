@@ -21,14 +21,20 @@ target_link_libraries(helloWindow glfw ${OPENGL_LIBRARIES})
 # Link GLFW, GLEW, and OpenGL directly to your executable
 # target_link_libraries(helloWindow glfw GLEW ${OPENGL_LIBRARIES})
 
-# --- 2. Fifth PROGRAM ---
+# --- 2. Second PROGRAM ---
 add_executable(triangle triangle.cpp glad.c)
 # target_link_libraries(triangle glfw GLEW ${OPENGL_LIBRARIES})
 target_include_directories(triangle PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(triangle glfw ${OPENGL_LIBRARIES})
 
-# --- 3. Sixth PROGRAM ---
+# --- 3. Third PROGRAM ---
 add_executable(EBO EBO.cpp glad.c)
 # target_link_libraries(EBO glfw GLEW ${OPENGL_LIBRARIES})
 target_include_directories(EBO PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(EBO glfw ${OPENGL_LIBRARIES})
+
+# --- 4. Fourth PROGRAM ---
+add_executable(shaders shaders.cpp glad.c)
+# target_link_libraries(EBO glfw GLEW ${OPENGL_LIBRARIES})
+target_include_directories(shaders PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(shaders glfw ${OPENGL_LIBRARIES})
