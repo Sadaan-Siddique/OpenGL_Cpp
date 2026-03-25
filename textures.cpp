@@ -23,7 +23,7 @@ using std::cout, std::endl;
 const unsigned int g_SCR_WIDTH = 800; 
 const unsigned int g_SCR_HEIGHT = 800; 
 GLFWwindow* g_window;
-unsigned int g_VAO, g_EBO, g_VBO, g_texture, g_vertexShader, g_fragmentShader, g_shaderProgram;
+unsigned int g_VAO, g_EBO, g_VBO, g_texture1, g_texture2, g_vertexShader, g_fragmentShader, g_shaderProgram;
 
 // Shaders
 const char* g_vertexShaderSource = R"( 
@@ -49,12 +49,15 @@ const char* g_fragmentShaderSource = "#version 330 core\n"
     "in vec3 ourColor;\n"
     "in vec2 TexCoord;\n"
 
-    "uniform sampler2D ourTexture;\n"
+    "uniform sampler2D texture1;\n" // The first image
+    "uniform sampler2D texture2;\n" // The second image
 
     "void main()\n"
     "{\n"
-        "FragColor = texture(ourTexture, TexCoord) * vec4(ourColor, 1.0);\n" // sample the color of a texture. GLSL’s built-in texture function takes as its first argument a texture sampler and as its second argument the corresponding texture coordinates
+        // "FragColor = texture(ourTexture, TexCoord) * vec4(ourColor, 1.0);\n" // sample the color of a texture. GLSL’s built-in texture function takes as its first argument a texture sampler and as its second argument the corresponding texture coordinates
         // "FragColor = texture(ourTexture, TexCoord);\n"
+        // Mix the two images together!
+       "FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), 0.5);\n"
     "}\0";
 
 // Functions
@@ -122,11 +125,11 @@ void windowInitialize()
 void vertexSpecification()
 {
     float vertices[] = {
-        // positions      // colors         // texture coords
-        0.8f, 0.8f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
-        0.8f, -0.8f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
-        -0.8f, -0.8f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
-        -0.8f, 0.8f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f // top left
+        // positions          // colors           // texture coords
+         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   4.0f, 4.0f, // top right (300%, 300%)
+         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   4.0f, 0.0f, // bottom right (300%, 0%)
+        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left (0%, 0%)
+        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 4.0f  // top left (0%, 300%)
     };
 
     unsigned int indices[] = {
@@ -217,9 +220,14 @@ void createGraphicsPipeline()
 
 void createTextures()
 {
+    // To safely reuse the variables for two images, you must completely finish setting up the first texture and call stbi_image_free(data) before you try to load the second one.    
+    // ==========================================
+    // TEXTURE 1 SETUP
+    // ==========================================
+
     // Creating Textures
-    glGenTextures(1, &g_texture);
-    glBindTexture(GL_TEXTURE_2D, g_texture);
+    glGenTextures(1, &g_texture1);
+    glBindTexture(GL_TEXTURE_2D, g_texture1);
 
     // Settign Texture Parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -236,18 +244,14 @@ void createTextures()
 
     if (data)
     {
-        GLenum format = GL_RGB;
-        if (nrChannels == 1) format = GL_RED;
-        else if (nrChannels == 3) format = GL_RGB;
-        else if (nrChannels == 4) format = GL_RGBA;
         // Tell OpenGL to use 1-byte alignment to prevent segfaults with RGB images
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
     else
     {
-        cout << "Failed to load texture\n";
+        cout << "Failed to load texture 1\n";
         if (!data) 
         {
             cout << "Error: " << stbi_failure_reason() << endl;
@@ -255,6 +259,42 @@ void createTextures()
         return;
     }   
     stbi_image_free(data);
+
+    // ==========================================
+    // TEXTURE 2 SETUP
+    // ==========================================
+
+    glGenTextures(1, &g_texture2);
+    glBindTexture(GL_TEXTURE_2D, g_texture2);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    data = stbi_load("../images/blue-bmp-16-bit.bmp", &width, &height, &nrChannels, 0);
+
+
+    if (data)
+    {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        cout << "Failed to load texture 2\n";
+        if (!data) 
+        {
+            cout << "Error: " << stbi_failure_reason() << endl;
+        }
+        return;
+    }   
+    stbi_image_free(data);
+
+
+
 }
 
 void processInput(GLFWwindow *window)
@@ -293,10 +333,22 @@ void mainRenderingLoop()
         glUseProgram(g_shaderProgram); // to actviate the shader
 
         // Activate texture unit
-        glActiveTexture(GL_TEXTURE0);   
 
-        glUniform1i(glGetUniformLocation(g_shaderProgram, "ourTexture"), 0);
+        // for texture 1
+        glActiveTexture(GL_TEXTURE0);
+        // Put the first image record on it
+        glBindTexture(GL_TEXTURE_2D, g_texture1);
+        // Tell the shader variable "texture1" to read from Texture Unit 0
+        glUniform1i(glGetUniformLocation(g_shaderProgram, "texture1"), 0);
 
+        // for texture 2
+        glActiveTexture(GL_TEXTURE1);
+        // Put the second image record on it
+        glBindTexture(GL_TEXTURE_2D, g_texture2);
+        // Tell the shader variable "texture2" to read from Texture Unit 1
+        glUniform1i(glGetUniformLocation(g_shaderProgram, "texture2"), 1);
+
+        
         // float time = glfwGetTime();
         
         // float offset = sin(time) * 0.5f; 
@@ -310,7 +362,9 @@ void mainRenderingLoop()
         // Draw
         // glBindVertexArray(g_VAO);
         // glDrawArrays(GL_TRIANGLES, 0, 3);
-        glBindTexture(GL_TEXTURE_2D, g_texture);
+        glBindTexture(GL_TEXTURE_2D, g_texture1);
+        glBindTexture(GL_TEXTURE_2D, g_texture2);
+
         glBindVertexArray(g_VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         
