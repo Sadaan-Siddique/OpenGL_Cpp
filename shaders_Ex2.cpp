@@ -1,20 +1,14 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include <cmath> // Needed for fmod (range reduction)
+#include "mySin.h"
 using std::cout, std::endl;
 
 // Global Variables
-#define PI 3.141592653589793238462649
 const unsigned int g_SCR_WIDTH = 800; 
 const unsigned int g_SCR_HEIGHT = 800; 
 GLFWwindow* g_window;
-unsigned int g_VAO;
-unsigned int g_EBO;
-unsigned int g_VBO;
-unsigned int g_vertexShader;
-unsigned int g_fragmentShader;
-unsigned int g_shaderProgram;
+unsigned int g_VAO, g_EBO, g_VBO, g_texture, g_vertexShader, g_fragmentShader, g_shaderProgram;
 
 // Shaders
 const char* g_vertexShaderSource = R"( 
@@ -45,9 +39,9 @@ void mainRenderingLoop();
 void GetOpenGLVersionInfo();
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
-long double exponentialFunc(double base, unsigned int exponent);
-unsigned long long factorialFunc(unsigned int n);
-long double my_sin(double x);
+// long double exponentialFunc(double base, unsigned int exponent);
+// unsigned long long factorialFunc(unsigned int n);
+// long double my_sin(double x);
 
 // Main Start
 int main()
@@ -237,32 +231,32 @@ void mainRenderingLoop()
 
 }
 
-long double exponentialFunc(double base, unsigned int exponent)
-{
-    if (base == 0 && exponent == 0)
-        return -1;
+// long double exponentialFunc(double base, unsigned int exponent)
+// {
+//     if (base == 0 && exponent == 0)
+//         return -1;
 
-    long double power = 1;
-    for(int i = 1; i <= exponent; i++)
-        power *= base;
-    return power;
-}
+//     long double power = 1;
+//     for(int i = 1; i <= exponent; i++)
+//         power *= base;
+//     return power;
+// }
 
-unsigned long long factorialFunc(unsigned int n)
-{
-    unsigned long long factorial = 1;
-    for(int i = n; i > 0; i--)
-        factorial *=  i;
-    return factorial;
-}
+// unsigned long long factorialFunc(unsigned int n)
+// {
+//     unsigned long long factorial = 1;
+//     for(int i = n; i > 0; i--)
+//         factorial *=  i;
+//     return factorial;
+// }
 
-long double my_sin(double x)
-{
-    x = fmod(x, 2.0 * PI);
-    long double sinx = 0;
-    // Summation Function of taylor series of sinx
-    for (int n = 0; n < 9; n++)
-      sinx += ( exponentialFunc(-1, n) * exponentialFunc(x, ((2*n) + 1)) ) / factorialFunc((2*n) + 1);
+// long double my_sin(double x)
+// {
+//     x = fmod(x, 2.0 * PI);
+//     long double sinx = 0;
+//     // Summation Function of taylor series of sinx
+//     for (int n = 0; n < 9; n++)
+//       sinx += ( exponentialFunc(-1, n) * exponentialFunc(x, ((2*n) + 1)) ) / factorialFunc((2*n) + 1);
     
-    return sinx;
-}
+//     return sinx;
+// }
