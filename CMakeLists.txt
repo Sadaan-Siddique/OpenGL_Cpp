@@ -50,3 +50,9 @@ add_executable(shaders_Ex3 shaders_Ex3.cpp glad.c)
 # target_link_libraries(shaders_Ex3 glfw GLEW ${OPENGL_LIBRARIES})
 target_include_directories(shaders_Ex3 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(shaders_Ex3 glfw ${OPENGL_LIBRARIES})
+
+# --- 7. Seventh PROGRAM ---
+add_executable(textures textures.cpp glad.c)
+# target_link_libraries(textures glfw GLEW ${OPENGL_LIBRARIES})
+target_include_directories(textures PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(textures glfw ${OPENGL_LIBRARIES})
