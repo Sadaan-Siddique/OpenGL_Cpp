@@ -1,5 +1,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image/stb_image.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -12,21 +15,24 @@ const unsigned int g_SCR_WIDTH = 800;
 const unsigned int g_SCR_HEIGHT = 800; 
 GLFWwindow* g_window;
 unsigned int g_VAO, g_EBO, g_VBO, g_texture1, g_texture2, g_vertexShader, g_fragmentShader, g_shaderProgram;
-float g_mixValue = 0.5f;
 
-// Shaders
+// Shader
 const char* g_vertexShaderSource = R"( 
     #version 330 core
-    layout (location = 0) in vec3 aPos; // position has attribute position 0
+    layout (location = 0) in vec3 aPos; 
     layout (location = 1) in vec3 aColor;
     layout (location = 2) in vec2 aTexCoord; 
 
     out vec3 ourColor;
     out vec2 TexCoord;
 
+    uniform mat4 transform; // <--- The new transformation matrix
+
     void main()
     {
-        gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+        // Matrix multiplication goes strictly from right to left!
+        gl_Position = transform * vec4(aPos, 1.0);
+        
         ourColor = aColor;
         TexCoord = aTexCoord;
     }
@@ -40,12 +46,13 @@ const char* g_fragmentShaderSource = "#version 330 core\n"
 
     "uniform sampler2D texture1;\n" // The first image
     "uniform sampler2D texture2;\n" // The second image
-    "uniform float mixValue;\n" // will receive the data from C++, and then plug the variable directly into the mix function
 
     "void main()\n"
     "{\n"
+        // "FragColor = texture(ourTexture, TexCoord) * vec4(ourColor, 1.0);\n" // sample the color of a texture. GLSL’s built-in texture function takes as its first argument a texture sampler and as its second argument the corresponding texture coordinates
+        // "FragColor = texture(ourTexture, TexCoord);\n"
         // Mix the two images together!
-       "FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), mixValue);\n"
+       "FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), 0.5);\n"
     "}\0";
 
 // Functions
@@ -119,14 +126,6 @@ void vertexSpecification()
         -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left (0%, 0%)
         -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 4.0f  // top left (0%, 300%)
     };
-
-    // float vertices[] = {
-    //     // positions // colors // texture coords
-    //     0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
-    //     0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
-    //     -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
-    //     -0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f // top left
-    // };
 
     unsigned int indices[] = {
         0, 1, 3,
@@ -216,6 +215,7 @@ void createGraphicsPipeline()
 
 void createTextures()
 {
+    // To safely reuse the variables for two images, you must completely finish setting up the first texture and call stbi_image_free(data) before you try to load the second one.    
     // ==========================================
     // TEXTURE 1 SETUP
     // ==========================================
@@ -301,23 +301,6 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-
-    // Will increase the mix() value when pressing up
-    if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-    {
-        g_mixValue += 0.005f; // Change this number to make it fade faster or slower
-        if(g_mixValue >= 1.0f)
-            g_mixValue = 1.0f; // will Lock it at 1.0 maximum
-    }
-
-    // Will decrease the mix() value when pressing up
-    if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-    {
-        g_mixValue -= 0.005f; // Change this number to make it fade faster or slower
-        if(g_mixValue <= 0.0f)
-            g_mixValue = 0.0f; // will Lock it at 0.0 maximum
-    }
-
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -349,6 +332,19 @@ void mainRenderingLoop()
 
         glUseProgram(g_shaderProgram); // to actviate the shader
 
+        
+        // Starting with an Identity matrix (a blank mathematical slate)
+        glm::mat4 trans = glm::mat4(1.0f);
+        // Translating the identity matrix to the bottom-right
+        trans = glm::translate(trans, glm::vec3(0.5f, 0.2f, 0.0f));
+        // rotating it around the z-axis (like a steering wheel)
+        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+        // sending the matrix to the vertex shader
+        unsigned int transformLoc = glGetUniformLocation(g_shaderProgram, "transform");
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans)); 
+
+
+
         // Activate texture unit
 
         // for texture 1
@@ -365,18 +361,20 @@ void mainRenderingLoop()
         // Tell the shader variable "texture2" to read from Texture Unit 1
         glUniform1i(glGetUniformLocation(g_shaderProgram, "texture2"), 1);
 
-        static int i = 0;
-        if(i > 20)
-        {
-            float time = glfwGetTime();
-            g_mixValue = my_sin(time); 
-            cout << g_mixValue << endl;
-            i = 0;
-        }
-        i++;
-        glUniform1f(glGetUniformLocation(g_shaderProgram, "mixValue"), g_mixValue); // Send the real-time C++ float to the GLSL uniform
+        
+        // float time = glfwGetTime();
+        
+        // float offset = sin(time) * 0.5f; 
+        // int offsetLocation = glGetUniformLocation(g_shaderProgram, "xOffset");
+        // glUniform1f(offsetLocation, offset);
+
+        // float greenValue = my_sin(time) / 2.0f + 0.5f;
+        // int colorLocation = glGetUniformLocation(g_shaderProgram, "ourColor");
+        // glUniform4f(colorLocation, 0.0f, greenValue, 0.0f, 1.0f);
 
         // Draw
+        // glBindVertexArray(g_VAO);
+        // glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindTexture(GL_TEXTURE_2D, g_texture1);
         glBindTexture(GL_TEXTURE_2D, g_texture2);
 
@@ -394,4 +392,3 @@ void mainRenderingLoop()
     glDeleteProgram(g_shaderProgram);
 
 }
-
