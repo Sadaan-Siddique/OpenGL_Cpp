@@ -1,16 +1,3 @@
-// In OpenGL, textures are objects used to store and apply detailed image data to 3D models. They are essentially large arrays of data, typically composed of texels (texture pixels), which can represent color, height maps, or other surface properties.
-// Because the C++ standard library does not include built-in support for image decoding, developers typically use third-party libraries. 
-// In C++, an image loader is a piece of code or a library function responsible for reading an image file (such as .png, .jpg, or .bmp) from disk and decoding its compressed data into a raw pixel format that the program can manipulate in memory.
-
-// Texture sirf ek image hoti hai. Shader batata hai ke is image ko geometry par kaise lagana hai. Is liye shaders ke bina texture use nahi ho sakta.
-
-// To use a texture, you need:
-// Image file (e.g. JPG/PNG)
-// Load it using stb_image
-// Send it to GPU (texture object)
-// Add texture coordinates to vertices
-// Use shaders to sample it
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image/stb_image.h"
 #include <glad/glad.h>
@@ -55,9 +42,9 @@ const char* g_fragmentShaderSource = "#version 330 core\n"
     "void main()\n"
     "{\n"
         // "FragColor = texture(ourTexture, TexCoord) * vec4(ourColor, 1.0);\n" // sample the color of a texture. GLSL’s built-in texture function takes as its first argument a texture sampler and as its second argument the corresponding texture coordinates
-        // "FragColor = texture(ourTexture, TexCoord);\n"
+        "FragColor = texture(texture1, TexCoord);\n"
         // Mix the two images together!
-       "FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), 0.5);\n"
+    //    "FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), 0.5);\n"
     "}\0";
 
 // Functions
@@ -126,11 +113,27 @@ void vertexSpecification()
 {
     float vertices[] = {
         // positions          // colors           // texture coords
-         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   4.0f, 4.0f, // top right (300%, 300%)
-         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   4.0f, 0.0f, // bottom right (300%, 0%)
-        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left (0%, 0%)
-        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 4.0f  // top left (0%, 300%)
+         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   0.55f, 0.55f, // top right (300%, 300%)
+         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   0.45f, 0.55f, // bottom right (300%, 0%)
+        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.45f, 0.45f, // bottom left (0%, 0%)
+        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.55f, 0.45f  // top left (0%, 300%)
     };
+
+    // float vertices[] = {
+    //     // positions          // colors           // texture coords
+    //      0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   0.505f, 0.505f, // top right 
+    //      0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   0.505f, 0.495f, // bottom right
+    //     -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.495f, 0.495f, // bottom left 
+    //     -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.495f, 0.505f  // top left 
+    // };
+
+    // float vertices[] = {
+    //     // positions // colors // texture coords
+    //     0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
+    //     0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
+    //     -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
+    //     -0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f // top left
+    // };
 
     unsigned int indices[] = {
         0, 1, 3,
@@ -230,11 +233,17 @@ void createTextures()
     glBindTexture(GL_TEXTURE_2D, g_texture1);
 
     // Settign Texture Parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // This controls what happens when the image shrinks
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
+
+    // THIS controls what happens when the image is stretched/zoomed!
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     // Loading image
     stbi_set_flip_vertically_on_load(true);
@@ -250,7 +259,7 @@ void createTextures()
         else if (nrChannels == 4) format = GL_RGBA;
         // Tell OpenGL to use 1-byte alignment to prevent segfaults with RGB images
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
     else
@@ -263,46 +272,6 @@ void createTextures()
         return;
     }   
     stbi_image_free(data);
-
-    // ==========================================
-    // TEXTURE 2 SETUP
-    // ==========================================
-
-    glGenTextures(1, &g_texture2);
-    glBindTexture(GL_TEXTURE_2D, g_texture2);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    data = stbi_load("../images/blue-bmp-16-bit.bmp", &width, &height, &nrChannels, 0);
-
-
-    if (data)
-    {
-        GLenum format = GL_RGB;
-        if (nrChannels == 1) format = GL_RED;
-        else if (nrChannels == 3) format = GL_RGB;
-        else if (nrChannels == 4) format = GL_RGBA;
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        cout << "Failed to load texture 2\n";
-        if (!data) 
-        {
-            cout << "Error: " << stbi_failure_reason() << endl;
-        }
-        return;
-    }   
-    stbi_image_free(data);
-
-
-
 }
 
 void processInput(GLFWwindow *window)
@@ -348,14 +317,6 @@ void mainRenderingLoop()
         glBindTexture(GL_TEXTURE_2D, g_texture1);
         // Tell the shader variable "texture1" to read from Texture Unit 0
         glUniform1i(glGetUniformLocation(g_shaderProgram, "texture1"), 0);
-
-        // for texture 2
-        glActiveTexture(GL_TEXTURE1);
-        // Put the second image record on it
-        glBindTexture(GL_TEXTURE_2D, g_texture2);
-        // Tell the shader variable "texture2" to read from Texture Unit 1
-        glUniform1i(glGetUniformLocation(g_shaderProgram, "texture2"), 1);
-
         
         // float time = glfwGetTime();
         
@@ -371,7 +332,6 @@ void mainRenderingLoop()
         // glBindVertexArray(g_VAO);
         // glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindTexture(GL_TEXTURE_2D, g_texture1);
-        glBindTexture(GL_TEXTURE_2D, g_texture2);
 
         glBindVertexArray(g_VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
