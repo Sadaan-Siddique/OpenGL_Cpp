@@ -300,9 +300,6 @@ void createTextures()
         return;
     }   
     stbi_image_free(data);
-
-
-
 }
 
 void processInput(GLFWwindow *window)

@@ -62,3 +62,9 @@ add_executable(textures_Ex3 textures_Ex3.cpp glad.c)
 # target_link_libraries(textures_Ex3 glfw GLEW ${OPENGL_LIBRARIES})
 target_include_directories(textures_Ex3 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(textures_Ex3 glfw ${OPENGL_LIBRARIES})
+
+# --- 9. Ninth PROGRAM ---
+add_executable(textures_Ex4 textures_Ex4.cpp glad.c)
+# target_link_libraries(textures_Ex4 glfw GLEW ${OPENGL_LIBRARIES})
+target_include_directories(textures_Ex4 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(textures_Ex4 glfw ${OPENGL_LIBRARIES})

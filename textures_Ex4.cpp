@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <filesystem>
+#include "mySin.h"
 using std::cout, std::endl;
 
 // Global Variables
@@ -11,6 +12,7 @@ const unsigned int g_SCR_WIDTH = 800;
 const unsigned int g_SCR_HEIGHT = 800; 
 GLFWwindow* g_window;
 unsigned int g_VAO, g_EBO, g_VBO, g_texture1, g_texture2, g_vertexShader, g_fragmentShader, g_shaderProgram;
+float g_mixValue = 0.5f;
 
 // Shaders
 const char* g_vertexShaderSource = R"( 
@@ -38,10 +40,12 @@ const char* g_fragmentShaderSource = "#version 330 core\n"
 
     "uniform sampler2D texture1;\n" // The first image
     "uniform sampler2D texture2;\n" // The second image
+    "uniform float mixValue;\n" // will receive the data from C++, and then plug the variable directly into the mix function
 
     "void main()\n"
     "{\n"
-        "FragColor = texture(texture1, TexCoord);\n"
+        // Mix the two images together!
+       "FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), mixValue);\n"
     "}\0";
 
 // Functions
@@ -110,19 +114,11 @@ void vertexSpecification()
 {
     float vertices[] = {
         // positions          // colors           // texture coords
-         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   0.55f, 0.55f, // top right (300%, 300%)
-         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   0.45f, 0.55f, // bottom right (300%, 0%)
-        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.45f, 0.45f, // bottom left (0%, 0%)
-        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.55f, 0.45f  // top left (0%, 300%)
+         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   4.0f, 4.0f, // top right (300%, 300%)
+         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   4.0f, 0.0f, // bottom right (300%, 0%)
+        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left (0%, 0%)
+        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 4.0f  // top left (0%, 300%)
     };
-
-    // float vertices[] = {
-    //     // positions          // colors           // texture coords
-    //      0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   0.505f, 0.505f, // top right 
-    //      0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   0.505f, 0.495f, // bottom right
-    //     -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.495f, 0.495f, // bottom left 
-    //     -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.495f, 0.505f  // top left 
-    // };
 
     // float vertices[] = {
     //     // positions // colors // texture coords
@@ -220,7 +216,6 @@ void createGraphicsPipeline()
 
 void createTextures()
 {
-    // To safely reuse the variables for two images, you must completely finish setting up the first texture and call stbi_image_free(data) before you try to load the second one.    
     // ==========================================
     // TEXTURE 1 SETUP
     // ==========================================
@@ -230,11 +225,11 @@ void createTextures()
     glBindTexture(GL_TEXTURE_2D, g_texture1);
 
     // Settign Texture Parameters
-    // This controls what happens when the image shrinks
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    // THIS controls what happens when the image is stretched/zoomed!
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // Loading image
     stbi_set_flip_vertically_on_load(true);
@@ -250,12 +245,49 @@ void createTextures()
         else if (nrChannels == 4) format = GL_RGBA;
         // Tell OpenGL to use 1-byte alignment to prevent segfaults with RGB images
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
     else
     {
         cout << "Failed to load texture 1\n";
+        if (!data) 
+        {
+            cout << "Error: " << stbi_failure_reason() << endl;
+        }
+        return;
+    }   
+    stbi_image_free(data);
+
+    // ==========================================
+    // TEXTURE 2 SETUP
+    // ==========================================
+
+    glGenTextures(1, &g_texture2);
+    glBindTexture(GL_TEXTURE_2D, g_texture2);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    data = stbi_load("../images/blue-bmp-16-bit.bmp", &width, &height, &nrChannels, 0);
+
+
+    if (data)
+    {
+        GLenum format = GL_RGB;
+        if (nrChannels == 1) format = GL_RED;
+        else if (nrChannels == 3) format = GL_RGB;
+        else if (nrChannels == 4) format = GL_RGBA;
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        cout << "Failed to load texture 2\n";
         if (!data) 
         {
             cout << "Error: " << stbi_failure_reason() << endl;
@@ -269,6 +301,23 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    // Will increase the mix() value when pressing up
+    if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        g_mixValue += 0.005f; // Change this number to make it fade faster or slower
+        if(g_mixValue >= 1.0f)
+            g_mixValue = 1.0f; // will Lock it at 1.0 maximum
+    }
+
+    // Will decrease the mix() value when pressing up
+    if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        g_mixValue -= 0.005f; // Change this number to make it fade faster or slower
+        if(g_mixValue <= 0.0f)
+            g_mixValue = 0.0f; // will Lock it at 0.0 maximum
+    }
+
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -308,8 +357,30 @@ void mainRenderingLoop()
         glBindTexture(GL_TEXTURE_2D, g_texture1);
         // Tell the shader variable "texture1" to read from Texture Unit 0
         glUniform1i(glGetUniformLocation(g_shaderProgram, "texture1"), 0);
-        
+
+        // for texture 2
+        glActiveTexture(GL_TEXTURE1);
+        // Put the second image record on it
+        glBindTexture(GL_TEXTURE_2D, g_texture2);
+        // Tell the shader variable "texture2" to read from Texture Unit 1
+        glUniform1i(glGetUniformLocation(g_shaderProgram, "texture2"), 1);
+
+        static int i = 0;
+        if(i > 20)
+        {
+            float time = glfwGetTime();
+            g_mixValue = my_sin(time); 
+            cout << g_mixValue << endl;
+            i = 0;
+        }
+        i++;
+        glUniform1f(glGetUniformLocation(g_shaderProgram, "mixValue"), g_mixValue); // Send the real-time C++ float to the GLSL uniform
+
+        // Draw
+        // glBindVertexArray(g_VAO);
+        // glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindTexture(GL_TEXTURE_2D, g_texture1);
+        glBindTexture(GL_TEXTURE_2D, g_texture2);
 
         glBindVertexArray(g_VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
