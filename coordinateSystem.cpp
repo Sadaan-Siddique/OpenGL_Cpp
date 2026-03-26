@@ -1,3 +1,19 @@
+// a frustum is the 3D volume that represents the camera's field of vision. Only objects within this truncated pyramid are rendered on the screen.  
+// perspective division is the fixed-function process that converts 4D clip space coordinates to 3D Normalized Device Coordinates (NDC). This step is responsible for the actual "3D effect" where distant objects appear smaller.
+// It occurs automatically after the vertex shader (and optional geometry/tessellation shaders) but before rasterization.
+// If you ever were to enjoy the graphics the real life has to offer you’ll notice that objects that are farther away appear much smaller. This weird effect is something we call perspective. 
+// OpenGL does not actually understand 3D space. OpenGL only ever draws vertices that fall exactly between -1.0 and 1.0 on the X, Y, and Z axes (Normalized Device Coordinates). If a vertex is at 1.01, OpenGL deletes it.
+// To draw a 3D world, you have to take a vertex, move it through 5 different coordinate spaces using 3 specific matrices, and carefully squeeze it into that -1.0 to 1.0 box.
+// Local Space -> World Space -> View Space -> Clip Space -> Screen Space
+
+// The Math (MVP) : To move the vertices through Spaces, multiply them by Model View and Projection matrices
+// The Model Matrix (Local → World): This translates, rotates, and scales your object to place it somewhere in the 3D world.
+// The View Matrix (World → View): This acts as your camera. Moving a camera slightly to the right is mathematically identical to pushing the entire 3D world slightly to the left.
+// The Projection Matrix (View → Clip): This applies the perspective distortion. It defines your Field of View (FOV) and how far the camera can see.
+
+// In GLSL, matrix multiplication is read strictly from right to left. To go from Local → World → View → Clip, the equation must be written backwards:
+// V(clip) ​= M(projection)​⋅M(view)​⋅M(model)​⋅V(local​)
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image/stb_image.h"
 #include <glm/glm.hpp>
@@ -15,6 +31,7 @@ const unsigned int g_SCR_WIDTH = 800;
 const unsigned int g_SCR_HEIGHT = 800; 
 GLFWwindow* g_window;
 unsigned int g_VAO, g_EBO, g_VBO, g_texture1, g_texture2, g_vertexShader, g_fragmentShader, g_shaderProgram;
+float g_mixValue = 0.5f;
 
 // Shader
 const char* g_vertexShaderSource = R"( 
@@ -26,12 +43,16 @@ const char* g_vertexShaderSource = R"(
     out vec3 ourColor;
     out vec2 TexCoord;
 
-    uniform mat4 transform; // <--- The new transformation matrix
+    uniform mat4 model; // <--- The new transformation matrix
+    uniform mat4 view; 
+    uniform mat4 projection;
+
 
     void main()
     {
         // Matrix multiplication goes strictly from right to left!
-        gl_Position = transform * vec4(aPos, 1.0);
+        // gl_Position = transform * vec4(aPos, 1.0);
+        gl_Position = projection * view * model * vec4(aPos, 1.0);
         
         ourColor = aColor;
         TexCoord = aTexCoord;
@@ -46,13 +67,11 @@ const char* g_fragmentShaderSource = "#version 330 core\n"
 
     "uniform sampler2D texture1;\n" // The first image
     "uniform sampler2D texture2;\n" // The second image
+    "uniform float mixValue;\n"
 
     "void main()\n"
     "{\n"
-        // "FragColor = texture(ourTexture, TexCoord) * vec4(ourColor, 1.0);\n" // sample the color of a texture. GLSL’s built-in texture function takes as its first argument a texture sampler and as its second argument the corresponding texture coordinates
-        // "FragColor = texture(ourTexture, TexCoord);\n"
-        // Mix the two images together!
-       "FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), 0.5);\n"
+        "FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), mixValue);\n"
     "}\0";
 
 // Functions
@@ -301,6 +320,21 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    
+    if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        g_mixValue += 0.005f; // Change this number to make it fade faster or slower
+        if(g_mixValue >= 1.0f)
+            g_mixValue = 1.0f; // will Lock it at 1.0 maximum
+    }
+
+    if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        g_mixValue -= 0.005f; // Change this number to make it fade faster or slower
+        if(g_mixValue <= 0.0f)
+            g_mixValue = 0.0f; // will Lock it at 0.0 maximum
+    }
+
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -332,61 +366,44 @@ void mainRenderingLoop()
 
         glUseProgram(g_shaderProgram); // to actviate the shader
 
-        
-        // Starting with an Identity matrix (a blank mathematical slate)
-        glm::mat4 trans = glm::mat4(1.0f); // will create and initialize a 4 x 4 Identity matrix using GLM
-        // Then trans stores a 4x4 transformation matrix that will eventually hold the combined data for your object's position, rotation, and scale at the end as we are updating it again and again after rotation, translation
+        // Generate Matrices (order doesn't matter)
+        // 1. MODEL: Rotate the box so it looks 3D
+        glm::mat4 model_matrix = glm::mat4(1.0f);
+        model_matrix = glm::rotate(model_matrix, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.1f, 0.0f, 0.0f));
 
-        // A Critical Rule of Matrix Math: In C++ GLM code, you must apply your transformations in the exact opposite order you want them to happen visually. If you want an object to spin in place, and then move to the corner, your code must read translate() first, and rotate() second. If you reverse the code, the rectangle will orbit around the center of the screen in a massive circle instead of spinning in the corner.
-        // Translating the identity matrix to the bottom-right
-        trans = glm::translate(trans, glm::vec3(0.5f, -0.2f, 0.0f));
-        // rotating it around the yz-axis 
-        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 1.0f)); // glm::rotate(trans, angle, axis);
+        // 3. VIEW: Move the "Camera" backwards by pushing the world away down the Z-axis
+        glm::mat4 view_matrix = glm::mat4(1.0f);
+        view_matrix = glm::translate(view_matrix, glm::vec3(0.0f, 0.5f, -3.0f));
 
-        // sending the matrix to the vertex shader
-        unsigned int transformLoc = glGetUniformLocation(g_shaderProgram, "transform");
+        // 2. PROJECTION: Create the 3D perspective (45-degree FOV, 800x800 aspect ratio)
+        glm::mat4 projection_matrix = glm::perspective(glm::radians(45.0f), 800.0f / 800.0f, 0.1f, 100.0f);
 
-        // This line is the "bridge" that sends your matrix data from your C++ code (the CPU) to your shader program (the GPU). Without this line, the math you did with GLM exists only in your RAM; this command actually applies those transformations to your 3D models.
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans)); 
+        // Now, sending these matrices to the vertex shader
+        unsigned int modelLoc = glGetUniformLocation(g_shaderProgram, "model");
+        unsigned int viewLoc = glGetUniformLocation(g_shaderProgram, "view");
+        unsigned int projectionLoc = glGetUniformLocation(g_shaderProgram, "projection");
 
-
-
-        // Activate texture unit
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
         // for texture 1
         glActiveTexture(GL_TEXTURE0);
-        // Put the first image record on it
         glBindTexture(GL_TEXTURE_2D, g_texture1);
-        // Tell the shader variable "texture1" to read from Texture Unit 0
         glUniform1i(glGetUniformLocation(g_shaderProgram, "texture1"), 0);
 
         // for texture 2
         glActiveTexture(GL_TEXTURE1);
-        // Put the second image record on it
         glBindTexture(GL_TEXTURE_2D, g_texture2);
-        // Tell the shader variable "texture2" to read from Texture Unit 1
         glUniform1i(glGetUniformLocation(g_shaderProgram, "texture2"), 1);
 
+        glUniform1f(glGetUniformLocation(g_shaderProgram, "mixValue"), g_mixValue); // Send the real-time C++ float to the GLSL uniform
         
-        // float time = glfwGetTime();
-        
-        // float offset = sin(time) * 0.5f; 
-        // int offsetLocation = glGetUniformLocation(g_shaderProgram, "xOffset");
-        // glUniform1f(offsetLocation, offset);
-
-        // float greenValue = my_sin(time) / 2.0f + 0.5f;
-        // int colorLocation = glGetUniformLocation(g_shaderProgram, "ourColor");
-        // glUniform4f(colorLocation, 0.0f, greenValue, 0.0f, 1.0f);
-
         // Draw
-        // glBindVertexArray(g_VAO);
-        // glDrawArrays(GL_TRIANGLES, 0, 3);
-        glBindTexture(GL_TEXTURE_2D, g_texture1);
-        glBindTexture(GL_TEXTURE_2D, g_texture2);
 
         glBindVertexArray(g_VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        
+
         glfwSwapBuffers(g_window);
         glfwPollEvents();
     }
