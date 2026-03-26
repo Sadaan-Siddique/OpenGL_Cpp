@@ -1,3 +1,5 @@
+// This task is like: We do not send 1,000 trees to the graphics card; we send exactly one tree, and then we draw it 1,000 times using 1,000 different transformation matrices.
+// Because OpenGL is a state machine, our vertices, textures, and VAO are already bound and ready to go. To draw a second box, all we have to do is change the math (the matrix) and tell OpenGL to "draw again".
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image/stb_image.h"
 #include <glm/glm.hpp>
@@ -15,6 +17,7 @@ const unsigned int g_SCR_WIDTH = 800;
 const unsigned int g_SCR_HEIGHT = 800; 
 GLFWwindow* g_window;
 unsigned int g_VAO, g_EBO, g_VBO, g_texture1, g_texture2, g_vertexShader, g_fragmentShader, g_shaderProgram;
+float g_mixValue = 0.5f;
 
 // Shader
 const char* g_vertexShaderSource = R"( 
@@ -46,13 +49,11 @@ const char* g_fragmentShaderSource = "#version 330 core\n"
 
     "uniform sampler2D texture1;\n" // The first image
     "uniform sampler2D texture2;\n" // The second image
+    "uniform float mixValue;\n"
 
     "void main()\n"
     "{\n"
-        // "FragColor = texture(ourTexture, TexCoord) * vec4(ourColor, 1.0);\n" // sample the color of a texture. GLSL’s built-in texture function takes as its first argument a texture sampler and as its second argument the corresponding texture coordinates
-        // "FragColor = texture(ourTexture, TexCoord);\n"
-        // Mix the two images together!
-       "FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), 0.5);\n"
+        "FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), mixValue);\n"
     "}\0";
 
 // Functions
@@ -301,6 +302,21 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    
+    if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        g_mixValue += 0.005f; // Change this number to make it fade faster or slower
+        if(g_mixValue >= 1.0f)
+            g_mixValue = 1.0f; // will Lock it at 1.0 maximum
+    }
+
+    if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        g_mixValue -= 0.005f; // Change this number to make it fade faster or slower
+        if(g_mixValue <= 0.0f)
+            g_mixValue = 0.0f; // will Lock it at 0.0 maximum
+    }
+
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -332,59 +348,40 @@ void mainRenderingLoop()
 
         glUseProgram(g_shaderProgram); // to actviate the shader
 
-        
-        // Starting with an Identity matrix (a blank mathematical slate)
-        glm::mat4 trans = glm::mat4(1.0f); // will create and initialize a 4 x 4 Identity matrix using GLM
-        // Then trans stores a 4x4 transformation matrix that will eventually hold the combined data for your object's position, rotation, and scale at the end as we are updating it again and again after rotation, translation
-
-        // A Critical Rule of Matrix Math: In C++ GLM code, you must apply your transformations in the exact opposite order you want them to happen visually. If you want an object to spin in place, and then move to the corner, your code must read translate() first, and rotate() second. If you reverse the code, the rectangle will orbit around the center of the screen in a massive circle instead of spinning in the corner.
-        // Translating the identity matrix to the bottom-right
-        trans = glm::translate(trans, glm::vec3(0.5f, -0.2f, 0.0f));
-        // rotating it around the yz-axis 
-        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 1.0f)); // glm::rotate(trans, angle, axis);
-
-        // sending the matrix to the vertex shader
+        // CONTAINER 1 (Bottom Right - Spinning)
+        glm::mat4 trans_1 = glm::mat4(1.0f); // will create and initialize a 4 x 4 Identity matrix using GLM
+        trans_1 = glm::translate(trans_1, glm::vec3(0.5f, -0.5f, 0.0f));
+        trans_1 = glm::rotate(trans_1, (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 1.0f)); // glm::rotate(trans, angle, axis);
+        trans_1 = glm::scale(trans_1, glm::vec3(0.6f, 0.6f, 0.6f));
         unsigned int transformLoc = glGetUniformLocation(g_shaderProgram, "transform");
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans)); 
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans_1)); 
+        glBindVertexArray(g_VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-
-
-        // Activate texture unit
+        // CONTAINER 2 (Top Left - Pulsing/Scaling)
+        glm::mat4 trans_2 = glm::mat4(1.0f); 
+        trans_2 = glm::translate(trans_2, glm::vec3(-0.5f, 0.5f, 0.0f));
+        float scale_amount = my_sin(glfwGetTime());
+        trans_2 = glm::scale(trans_2, glm::vec3(scale_amount, scale_amount, scale_amount)); // glm::scale(matrix_name, vector(x, y, z))
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans_2)); 
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         // for texture 1
         glActiveTexture(GL_TEXTURE0);
-        // Put the first image record on it
         glBindTexture(GL_TEXTURE_2D, g_texture1);
-        // Tell the shader variable "texture1" to read from Texture Unit 0
         glUniform1i(glGetUniformLocation(g_shaderProgram, "texture1"), 0);
 
         // for texture 2
         glActiveTexture(GL_TEXTURE1);
-        // Put the second image record on it
         glBindTexture(GL_TEXTURE_2D, g_texture2);
-        // Tell the shader variable "texture2" to read from Texture Unit 1
         glUniform1i(glGetUniformLocation(g_shaderProgram, "texture2"), 1);
 
+        glUniform1f(glGetUniformLocation(g_shaderProgram, "mixValue"), g_mixValue); // Send the real-time C++ float to the GLSL uniform
         
-        // float time = glfwGetTime();
-        
-        // float offset = sin(time) * 0.5f; 
-        // int offsetLocation = glGetUniformLocation(g_shaderProgram, "xOffset");
-        // glUniform1f(offsetLocation, offset);
-
-        // float greenValue = my_sin(time) / 2.0f + 0.5f;
-        // int colorLocation = glGetUniformLocation(g_shaderProgram, "ourColor");
-        // glUniform4f(colorLocation, 0.0f, greenValue, 0.0f, 1.0f);
-
         // Draw
-        // glBindVertexArray(g_VAO);
-        // glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindTexture(GL_TEXTURE_2D, g_texture1);
         glBindTexture(GL_TEXTURE_2D, g_texture2);
 
-        glBindVertexArray(g_VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        
         glfwSwapBuffers(g_window);
         glfwPollEvents();
     }

@@ -74,3 +74,9 @@ add_executable(transformation transformation.cpp glad.c)
 # target_link_libraries(transformation glfw GLEW ${OPENGL_LIBRARIES})
 target_include_directories(transformation PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(transformation glfw ${OPENGL_LIBRARIES})
+
+# --- 11. Eleventh PROGRAM ---
+add_executable(transformation_Ex2 transformation_Ex2.cpp glad.c)
+# target_link_libraries(transformation_Ex2 glfw GLEW ${OPENGL_LIBRARIES})
+target_include_directories(transformation_Ex2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(transformation_Ex2 glfw ${OPENGL_LIBRARIES})
