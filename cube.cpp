@@ -400,7 +400,7 @@ void mainRenderingLoop()
     
         // 2. VIEW: Move the "Camera" backwards by pushing the world away down the Z-axis
         glm::mat4 view_matrix = glm::mat4(1.0f);
-        view_matrix = glm::translate(view_matrix, glm::vec3(0.0f, 0.5f, -3.0f));
+        view_matrix = glm::translate(view_matrix, glm::vec3(0.0f, 0.0f, -3.0f));
 
         // 3. PROJECTION: Create the 3D perspective (45-degree FOV, 800x800 aspect ratio)
         glm::mat4 projection_matrix = glm::perspective(glm::radians(45.0f), 800.0f / 800.0f, 0.1f, 100.0f);
@@ -434,7 +434,8 @@ void mainRenderingLoop()
             glm::mat4 model_matrix = glm::mat4(1.0f);
             model_matrix = glm::translate(model_matrix, cubePositions[i]);
             float angle = 20.0f * i;
-            model_matrix = glm::rotate(model_matrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));   
+            if (i % 3 == 0) angle += (float)glfwGetTime() * 50.0f;
+            model_matrix = glm::rotate(model_matrix,( glm::radians(angle)), glm::vec3(1.0f, 0.3f, 0.5f));   
             // ourShader.setMat4("model", model);
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
             glDrawArrays(GL_TRIANGLES, 0, 36);
