@@ -92,3 +92,9 @@ add_executable(cube cube.cpp glad.c)
 # target_link_libraries(cube glfw GLEW ${OPENGL_LIBRARIES})
 target_include_directories(cube PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(cube glfw ${OPENGL_LIBRARIES})
+
+# --- 13. Thirteenth PROGRAM ---
+add_executable(camera camera.cpp glad.c)
+# target_link_libraries(camera glfw GLEW ${OPENGL_LIBRARIES})
+target_include_directories(camera PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(camera glfw ${OPENGL_LIBRARIES})

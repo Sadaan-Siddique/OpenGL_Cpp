@@ -1,3 +1,4 @@
+// When we’re talking about camera/view space we’re talking about all the vertex coordinates as seen from the camera’s perspective as the origin of the scene: the view matrix transforms all the world coordinates into view coordinates that are relative to the camera’s position and direction.
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image/stb_image.h"
 #include <glm/glm.hpp>
@@ -396,13 +397,26 @@ void mainRenderingLoop()
 
         glUseProgram(g_shaderProgram); // to actviate the shader
 
-        // Generate Matrices (order doesn't matter)
-    
-        // 2. VIEW: Move the "Camera" backwards by pushing the world away down the Z-axis
-        glm::mat4 view_matrix = glm::mat4(1.0f);
-        view_matrix = glm::translate(view_matrix, glm::vec3(0.0f, 0.0f, -3.0f));
+        // This example creates a view matrix that is the same as the one we created in the cube .cpp file
+        const float radius = 10.0f;
+        float camX = sin(glfwGetTime()) * radius;
+        float camZ = cos(glfwGetTime()) * radius;
+        // glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+        glm::vec3 cameraPos = glm::vec3(camX, 0.0f, camZ);
+        
+        glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
 
-        // 3. PROJECTION: Create the 3D perspective (45-degree FOV, 800x800 aspect ratio)
+        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+        glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
+
+        glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
+
+        glm::mat4 view_matrix;
+        view_matrix = glm::lookAt(cameraPos, cameraTarget, up); // The glm::LookAt function requires a position, target and up vector respectively.
+        
+        
+        // PROJECTION: Create the 3D perspective (45-degree FOV, 800x800 aspect ratio)
         // Here is exactly how your code fails without the Projection Matrix:
         // Your cube starts at Z = 0.0.
         // Your View Matrix pushes the cube away from the camera to Z = -3.0.
@@ -411,6 +425,7 @@ void mainRenderingLoop()
         glm::mat4 projection_matrix = glm::perspective(glm::radians(45.0f), 800.0f / 800.0f, 0.1f, 100.0f);
 
         // Now, sending these matrices to the vertex shader
+        // unsigned int viewLoc = glGetUniformLocation(g_shaderProgram, "view");
         unsigned int viewLoc = glGetUniformLocation(g_shaderProgram, "view");
         unsigned int projectionLoc = glGetUniformLocation(g_shaderProgram, "projection");
 
