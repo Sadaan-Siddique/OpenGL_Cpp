@@ -98,3 +98,10 @@ add_executable(camera camera.cpp glad.c)
 # target_link_libraries(camera glfw GLEW ${OPENGL_LIBRARIES})
 target_include_directories(camera PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(camera glfw ${OPENGL_LIBRARIES})
+
+# --- 14. Fourteenth PROGRAM ---
+add_executable(eulerAngles eulerAngles.cpp glad.c)
+# target_link_libraries(eulerAngles glfw GLEW ${OPENGL_LIBRARIES})
+target_include_directories(eulerAngles PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(eulerAngles glfw ${OPENGL_LIBRARIES})
+
