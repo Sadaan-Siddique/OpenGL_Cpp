@@ -369,6 +369,20 @@ void GetOpenGLVersionInfo()
 
 void mainRenderingLoop()
 {
+
+        glm::vec3 cubePositions[] = {
+            glm::vec3( 0.0f, 0.0f, 0.0f),
+            glm::vec3( 2.0f, 5.0f, -15.0f),
+            glm::vec3(-1.5f, -2.2f, -2.5f),
+            glm::vec3(-3.8f, -2.0f, -12.3f),
+            glm::vec3( 2.4f, -0.4f, -3.5f),
+            glm::vec3(-1.7f, 3.0f, -7.5f),
+            glm::vec3( 1.3f, -2.0f, -2.5f),
+            glm::vec3( 1.5f, 2.0f, -2.5f),
+            glm::vec3( 1.5f, 0.2f, -1.5f),
+            glm::vec3(-1.3f, 1.0f, -1.5f)
+        };
+
     while(!glfwWindowShouldClose(g_window))
     {
         processInput(g_window);
@@ -383,23 +397,18 @@ void mainRenderingLoop()
         glUseProgram(g_shaderProgram); // to actviate the shader
 
         // Generate Matrices (order doesn't matter)
-        // 1. MODEL: Rotate the box so it looks 3D
-        glm::mat4 model_matrix = glm::mat4(1.0f);
-        model_matrix = glm::rotate(model_matrix, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.1f, 0.0f, 0.0f));
-
-        // 3. VIEW: Move the "Camera" backwards by pushing the world away down the Z-axis
+    
+        // 2. VIEW: Move the "Camera" backwards by pushing the world away down the Z-axis
         glm::mat4 view_matrix = glm::mat4(1.0f);
         view_matrix = glm::translate(view_matrix, glm::vec3(0.0f, 0.5f, -3.0f));
 
-        // 2. PROJECTION: Create the 3D perspective (45-degree FOV, 800x800 aspect ratio)
+        // 3. PROJECTION: Create the 3D perspective (45-degree FOV, 800x800 aspect ratio)
         glm::mat4 projection_matrix = glm::perspective(glm::radians(45.0f), 800.0f / 800.0f, 0.1f, 100.0f);
 
         // Now, sending these matrices to the vertex shader
-        unsigned int modelLoc = glGetUniformLocation(g_shaderProgram, "model");
         unsigned int viewLoc = glGetUniformLocation(g_shaderProgram, "view");
         unsigned int projectionLoc = glGetUniformLocation(g_shaderProgram, "projection");
 
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
@@ -418,7 +427,18 @@ void mainRenderingLoop()
         // Draw
         glBindVertexArray(g_VAO);
         // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        unsigned int modelLoc = glGetUniformLocation(g_shaderProgram, "model");
+        for(unsigned int i = 0; i < 10; i++)
+        {
+            glm::mat4 model_matrix = glm::mat4(1.0f);
+            model_matrix = glm::translate(model_matrix, cubePositions[i]);
+            float angle = 20.0f * i;
+            model_matrix = glm::rotate(model_matrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));   
+            // ourShader.setMat4("model", model);
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
 
         glfwSwapBuffers(g_window);
         glfwPollEvents();
