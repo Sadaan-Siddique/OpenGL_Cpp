@@ -17,6 +17,13 @@ const unsigned int g_SCR_HEIGHT = 800;
 GLFWwindow* g_window;
 unsigned int g_VAO, g_EBO, g_VBO, g_texture1, g_texture2, g_vertexShader, g_fragmentShader, g_shaderProgram;
 float g_mixValue = 0.5f;
+glm::vec3 g_cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 g_cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 g_cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 g_cameraDirection = glm::normalize(g_cameraPos - g_cameraTarget);
+glm::vec3 g_up = glm::vec3(0.0f, 1.0f, 0.0f);
+glm::vec3 g_cameraRight = glm::normalize(glm::cross(g_up, g_cameraDirection));
+glm::vec3 g_cameraUp = glm::cross(g_cameraDirection, g_cameraRight);
 
 // Shader
 const char* g_vertexShaderSource = R"( 
@@ -351,6 +358,15 @@ void processInput(GLFWwindow *window)
             g_mixValue = 0.0f; // will Lock it at 0.0 maximum
     }
 
+    const float cameraSpeed = 0.05f; // adjust accordingly
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        g_cameraPos += cameraSpeed * g_cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        g_cameraPos -= cameraSpeed * g_cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        g_cameraPos -= glm::normalize(glm::cross(g_cameraFront, g_cameraUp)) *cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        g_cameraPos += glm::normalize(glm::cross(g_cameraFront, g_cameraUp)) *cameraSpeed;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -401,19 +417,14 @@ void mainRenderingLoop()
         const float radius = 10.0f;
         float camX = sin(glfwGetTime()) * radius;
         float camZ = cos(glfwGetTime()) * radius;
-        // glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-        glm::vec3 cameraPos = glm::vec3(camX, 0.0f, camZ);
+        // glm::vec3 cameraPos = glm::vec3(camX, 0.0f, camZ);
         
-        glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-        glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
 
-        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-        glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
 
-        glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
 
         glm::mat4 view_matrix;
-        view_matrix = glm::lookAt(cameraPos, cameraTarget, up); // The glm::LookAt function requires a position, target and up vector respectively.
+        view_matrix = glm::lookAt(g_cameraPos, g_cameraTarget, g_cameraUp); // The glm::LookAt function requires a position, target and up vector respectively.
+        // view_matrix = glm::lookAt(cameraPos, cameraFront, cameraUp);
         
         
         // PROJECTION: Create the 3D perspective (45-degree FOV, 800x800 aspect ratio)
