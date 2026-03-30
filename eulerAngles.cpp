@@ -15,7 +15,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image/stb_image.h"
-#include <glm/glm.hpp>
+#include <glm/glm.hpp> // The angle brackets < > tell the C++ compiler: "Do not look in my local folder for this. Go look in the main Arch Linux system folders."
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glad/glad.h>

@@ -1,4 +1,10 @@
 // When we’re talking about camera/view space we’re talking about all the vertex coordinates as seen from the camera’s perspective as the origin of the scene: the view matrix transforms all the world coordinates into view coordinates that are relative to the camera’s position and direction.
+
+// .h files define the interface (the "what"), while .cpp files provide the implementation (the "how").
+// Role and Content:
+// .h (Header) Files: Act as a "contract" or blueprint. They contain declarations—such as class structures, function prototypes, and constants—that tell the compiler an item exists without providing the full code for it.
+// .cpp (Source) Files: Contain the definitions or implementation. This is where the actual logic, such as function bodies and variable initializations, is written.
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image/stb_image.h"
 #include <glm/glm.hpp>
